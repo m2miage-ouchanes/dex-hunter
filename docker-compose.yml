@@ -1,0 +1,13 @@
+services:
+  dex-hunter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./.env:/usr/src/app/.env
+      - ./credentials.json:/usr/src/app/credentials.json
+    stdin_open: true
+    tty: true
+    command: ["npm", "start"]

@@ -1,0 +1,19 @@
+{
+  "name": "dex-hunter",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "dotenv": "^10.0.0",
+    "googleapis": "^85.0.0",
+    "telegram": "^2.0.0",
+    "@solana/web3.js": "^1.32.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.8.4",
+    "@types/node": "^16.11.7"
+  }
+}
