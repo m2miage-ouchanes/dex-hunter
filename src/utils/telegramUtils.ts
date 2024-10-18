@@ -70,6 +70,9 @@ export function extractTokenAddressFromMessage(message: any): string | null {
                     return tokenAddress;
                 }
             }
+        } else {
+            console.log("Ce n'est pas un ordre d'achat.");
+            return null; // Retourne null si ce n'est pas un ordre d'achat
         }
     }
     
