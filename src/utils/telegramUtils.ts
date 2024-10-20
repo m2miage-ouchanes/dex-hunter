@@ -59,10 +59,8 @@ export function extractTokenAddressFromMessage(message: any): string | null {
             const caLine = lines.find((line: string) => line.includes('CA:'));
         
             if (caLine) {
-                console.log("Ligne contenant 'CA:':", caLine); // Log pour vérifier ce qu'il y a dans la ligne
                 // Extraire l'adresse du token après "CA:"
                 const caMatch = caLine.match(/CA:\s*`?([a-zA-Z0-9]+)`?/); // Modifié pour capturer l'adresse sans les backticks
-                console.log("Résultat de l'expression régulière:", caMatch); // Log du résultat de l'expression régulière
                 const tokenAddress = caMatch ? caMatch[1] : null;
                 
                 if (tokenAddress) {

@@ -26,7 +26,7 @@ export async function checkAddressInSheet(address: string): Promise<boolean> {
 
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i];
-                if (row[stopLossIndex] === 'false' && row[memeCoinIndex] === address) {
+                if (row[stopLossIndex] === 'FALSE' && row[memeCoinIndex] === address) {
                     console.log('L\'adresse existe déjà dans la feuille.');
                     return true;
                 }
