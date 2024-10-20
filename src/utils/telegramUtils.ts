@@ -1,7 +1,8 @@
 import { NewMessage, NewMessageEvent } from 'telegram/events';
 import { TelegramClient } from 'telegram';
 import { getTransactionDetails } from './solanaUtils';
-import { checkAddressInSheet } from './ggSheetsUtils';
+import { checkAddressInSheet, addTokenToSheet } from './ggSheetsUtils';
+import { buyToken } from '../api/solProfitWave';
 
 /**
  * Gère les messages entrants et traite ceux qui correspondent à un swap de SOL.
@@ -10,12 +11,26 @@ export async function processMessage(event: NewMessageEvent) {
     const message = event.message;
 
     const tokenAddress = extractTokenAddressFromMessage(message);
+    const tokenName = extractTokenNameFromMessage(message);
+    const purchasePrice = extractPurchasePriceFromMessage(message);
                     
     // Vérifiez si la clé du token est récupérée
     if (tokenAddress) {
         const exists = await checkAddressInSheet(tokenAddress);
         if (!exists) {
-            console.log('Ajouter l\'adresse à la feuille.');
+            console.log('Adresse non trouvée dans la feuille. Achat du token en cours...');
+            try {
+                // Appel à l'API pour acheter le token
+                await buyToken(tokenAddress, 0.01); // Acheter pour 0.01 SOL
+
+                console.log('Achat réussi. Ajout de l\'adresse dans la feuille.');
+
+                // Ajouter l'adresse et le prix du token lors de l'achat du token dans la feuille Google Sheets
+                await addTokenToSheet(tokenAddress, tokenName, purchasePrice);
+
+            } catch (error) {
+                console.error('Erreur lors de l\'achat du token :', error);
+            }
         }
     }
     console.log('Fin du traitement !');
@@ -77,6 +92,54 @@ export function extractTokenAddressFromMessage(message: any): string | null {
     console.log('Aucune adresse de token trouvée dans le message.');
     return null; // Retourne null si aucune adresse n'a été trouvée
 }
+
+
+export function extractTokenNameFromMessage(message: any): string {
+    if (message && message.text) {
+        const lines: string[] = message.text.split('\n');
+
+        // Rechercher la ligne qui contient "CA:"
+        const caLine = lines.find((line: string) => line.includes('CA:'));
+
+        if (caLine) {
+            // Extraire le nom du token avant "CA:"
+            const tokenNameMatch = message.text.match(/(.*?)\s+CA:/);
+            if (tokenNameMatch && tokenNameMatch[1]) {
+                return tokenNameMatch[1].trim(); // Retirer les espaces autour
+            }
+        }
+    }
+    
+    return ''; // Retourne une chaîne vide si aucun nom n'est trouvé
+}
+
+
+/**
+ * Extrait le prix d'achat du token à partir d'un message contenant des informations de transaction.
+ * @param message Le message Telegram contenant potentiellement le prix d'achat
+ * @returns Le prix d'achat du token sous forme de chaîne, ou une chaîne vide si non trouvé
+ */
+export function extractPurchasePriceFromMessage(message: any): string {
+    if (message && message.text) {
+        const lines: string[] = message.text.split('\n');
+
+        // Rechercher la ligne qui commence par "💰 Received:"
+        const receivedLine = lines.find((line: string) => line.startsWith('💰 Received:'));
+        
+        if (receivedLine) {
+            // Utiliser une expression régulière pour extraire le prix qui suit "Price:"
+            const priceMatch = receivedLine.match(/Price:\s*\$?([\d.,]+)/);
+            if (priceMatch && priceMatch[1]) {
+                const price = priceMatch[1].trim(); // Retirer les espaces autour
+                return price.replace('.', ','); // Remplacer "." par ","
+            }
+        }
+    }
+    
+    return ''; // Retourne une chaîne vide si aucun prix n'est trouvé
+}
+
+
 
 /**
  * Extrait la clé du token à partir d'un message contenant une transaction.
