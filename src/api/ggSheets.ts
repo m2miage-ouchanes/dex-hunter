@@ -4,7 +4,7 @@ import { JWT } from 'google-auth-library'; // Importez JWT
 export async function getGoogleSheetsClient(): Promise<JWT> { // Déclarez le type de retour comme JWT
     const auth = new google.auth.GoogleAuth({
         keyFile: '/usr/src/app/credentials.json',
-        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
     
     // Obtenez le client et le type explicitement comme JWT

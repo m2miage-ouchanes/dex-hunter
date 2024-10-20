@@ -10,6 +10,8 @@ RUN npm install -g typescript
 RUN npm install @solana/web3.js@latest
 RUN npm install telegram
 RUN npm install googleapis@105 @google-cloud/local-auth@2.1.0 --save
+RUN npm install axios@latest
+RUN npm install --save-dev @types/axios@latest
 
 COPY src ./src
 
