@@ -1,6 +1,6 @@
 import { NewMessage, NewMessageEvent } from 'telegram/events';
 import { TelegramClient } from 'telegram';
-import { getTransactionDetails } from './solanaUtils';
+import { getTransactionDetails, currentPriceToken } from './solanaUtils';
 import { checkAddressInSheet, addTokenToSheet } from './ggSheetsUtils';
 import { buyToken } from '../api/solProfitWave';
 
@@ -12,7 +12,6 @@ export async function processMessage(event: NewMessageEvent) {
 
     const tokenAddress = extractTokenAddressFromMessage(message);
     const tokenName = extractTokenNameFromMessage(message);
-    const purchasePrice = extractPurchasePriceFromMessage(message);
                     
     // Vérifiez si la clé du token est récupérée
     if (tokenAddress) {
@@ -25,8 +24,10 @@ export async function processMessage(event: NewMessageEvent) {
 
                 console.log('Achat réussi. Ajout de l\'adresse dans la feuille.');
 
+                const tokenPrice = await currentPriceToken(tokenAddress);
+
                 // Ajouter l'adresse et le prix du token lors de l'achat du token dans la feuille Google Sheets
-                await addTokenToSheet(tokenAddress, tokenName, purchasePrice);
+                await addTokenToSheet(tokenAddress, tokenName, tokenPrice);
 
             } catch (error) {
                 console.error('Erreur lors de l\'achat du token :', error);
@@ -115,6 +116,7 @@ export function extractTokenNameFromMessage(message: any): string {
 
 
 /**
+ * !!!!! Plus valide !!!!!
  * Extrait le prix d'achat du token à partir d'un message contenant des informations de transaction.
  * @param message Le message Telegram contenant potentiellement le prix d'achat
  * @returns Le prix d'achat du token sous forme de chaîne, ou une chaîne vide si non trouvé
