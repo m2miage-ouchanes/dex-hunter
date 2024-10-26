@@ -7,7 +7,7 @@ services:
       - .env
     volumes:
       - ./.env:/usr/src/app/.env
-      - ./credentials.json:/usr/src/app/credentials.json
+      - ./credentials.json:/etc/secrets/credentials.json
     stdin_open: true
     tty: true
     command: ["npm", "start"]
