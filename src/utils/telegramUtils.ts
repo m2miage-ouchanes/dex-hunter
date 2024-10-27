@@ -1,7 +1,7 @@
 import { NewMessage, NewMessageEvent } from 'telegram/events';
 import { TelegramClient } from 'telegram';
 import { getTransactionDetails, currentPriceToken } from './solanaUtils';
-import { checkAddressInSheet, addTokenToSheet } from './ggSheetsUtils';
+import { checkAddressInSheet, addTokenToSheet, addStatToSheet } from './ggSheetsUtils';
 import { buyToken } from '../api/solProfitWave';
 
 /**
@@ -12,6 +12,7 @@ export async function processMessage(event: NewMessageEvent) {
 
     const tokenAddress = extractTokenAddressFromMessage(message);
     const tokenName = extractTokenNameFromMessage(message);
+    const whaleName = extractWhaleNameFromMessage(message);
                     
     // Vérifiez si la clé du token est récupérée
     if (tokenAddress) {
@@ -20,9 +21,12 @@ export async function processMessage(event: NewMessageEvent) {
             console.log('Adresse non trouvée dans la feuille. Achat du token en cours...');
             try {
                 // Appel à l'API pour acheter le token
-                await buyToken(tokenAddress, 0.01); // Acheter pour 0.01 SOL
+                //await buyToken(tokenAddress, 0.01); // Acheter pour 0.01 SOL
 
                 console.log('Achat réussi. Ajout de l\'adresse dans la feuille.');
+
+                // Ajouter le nom de la whale dans la feuille Google Sheets
+                await addStatToSheet(whaleName);
 
                 const tokenPrice = await currentPriceToken(tokenAddress);
 
@@ -42,7 +46,7 @@ export async function processMessage(event: NewMessageEvent) {
  * @param client Instance du client Telegram
  * @param chatId ID du chat à filtrer
  */
-export function startTelegramListener(client: TelegramClient, chatId: number) {
+export async function startTelegramListener(client: TelegramClient, chatId: number) {
     client.addEventHandler(
         async (event) => {
             try {
@@ -175,4 +179,28 @@ export async function extractTokenKeyFromTxMessage(message: any, transactionUrlP
         }
     }
     return null; // Retourne null si aucune clé de token n'a été trouvée
+}
+
+
+/**
+ * Extrait le nom de la whale à partir du message.
+ * @param message Le message Telegram contenant potentiellement le nom de la whale
+ * @returns Le nom de la whale si trouvé, sinon null
+ */
+export function extractWhaleNameFromMessage(message: any): string {
+    if (message && message.text) {
+        const lines: string[] = message.text.split('\n');
+
+        // Rechercher la ligne qui commence par "🔔 TXN ALERT :"
+        const txnAlertLine = lines.find((line: string) => line.startsWith('🔔 TXN ALERT :'));
+
+        if (txnAlertLine) {
+            // Utiliser une expression régulière pour capturer le nom de la whale
+            const nameMatch = txnAlertLine.match(/🔔 TXN ALERT : (.+)/);
+            if (nameMatch && nameMatch[1]) {
+                return nameMatch[1].trim(); // Retirer les espaces autour
+            }
+        }
+    }
+    return ''; // Retourne une chaîne vide si aucun nom n'est trouvé
 }
