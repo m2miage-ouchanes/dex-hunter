@@ -21,7 +21,7 @@ export async function processMessage(event: NewMessageEvent) {
             console.log('Adresse non trouvée dans la feuille. Achat du token en cours...');
             try {
                 // Appel à l'API pour acheter le token
-                //await buyToken(tokenAddress, 0.01); // Acheter pour 0.01 SOL
+                await buyToken(tokenAddress, 0.01); // Acheter pour 0.01 SOL
 
                 console.log('Achat réussi. Ajout de l\'adresse dans la feuille.');
 
