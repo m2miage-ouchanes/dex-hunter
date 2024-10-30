@@ -154,12 +154,11 @@ export async function addStatToSheet(whaleName: string) {
        const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
 
        // Préparation des données à insérer uniquement pour les colonnes spécifiées
-       const newRow = Array(rows[0].length).fill(''); // Crée une ligne vide de la même longueur que les autres
-       newRow[whaleIndex] = whaleName; // Insertion de l'adresse du token
-       newRow[dateIndex] = formattedDate; // Insertion de la date d'achat
+       const newRow = [whaleName, formattedDate]; // Limité aux colonnes D et E
+
 
        // Ajout des données à la première ligne vide trouvée
-       const appendRange = `Degen - Statistiques!A${firstEmptyRow}`; // Spécifie la ligne à insérer (A)
+       const appendRange = `Degen - Statistiques!D${firstEmptyRow}:E${firstEmptyRow}`; // Spécifie la ligne à insérer (de colonne D à E)
 
        await sheets.spreadsheets.values.update({
            auth: client,
