@@ -10,6 +10,13 @@ import { buyToken } from '../api/solProfitWave';
 export async function processMessage(event: NewMessageEvent) {
     const message = event.message;
 
+    // Vérifie si le message est un ordre d'achat
+    if (!isBuyOrder(message)) {
+        console.log("Ce n'est pas un ordre d'achat.");
+        return; // Fin de la fonction si ce n'est pas un ordre d'achat
+    }
+    console.log('C\'est un ordre d\'achat !');
+
     const tokenAddress = extractTokenAddressFromMessage(message);
     const tokenName = extractTokenNameFromMessage(message);
     const whaleName = extractWhaleNameFromMessage(message);
@@ -67,51 +74,38 @@ export async function startTelegramListener(client: TelegramClient, chatId: numb
  * @returns L'adresse du token si elle est trouvée, sinon null
  */
 export function extractTokenAddressFromMessage(message: any): string | null {
-    if (message && message.text) {
-        const lines: string[] = message.text.split('\n');
+    const lines: string[] = message.text.split('\n');
 
-        // Vérification d'un swap de SOL dans le message
-        const swappedLine = lines.find((line: string) => line.startsWith('💸 Swapped:') && line.includes('SOL'));
-        if (swappedLine) {
-            console.log('C\'est un ordre d\'achat !');
+    // Rechercher la ligne qui contient "CA:""
+    const caLine = lines.find((line: string) => line.includes('CA:'));
+
+    if (caLine) {
+        // Extraire l'adresse du token après "CA:"
+        const caMatch = caLine.match(/CA:\s*`?([a-zA-Z0-9]+)`?/); // Modifié pour capturer l'adresse sans les backticks
+        const tokenAddress = caMatch ? caMatch[1] : null;
         
-            // Rechercher la ligne qui commence par "JeetPT CA:" ou similaire
-            const caLine = lines.find((line: string) => line.includes('CA:'));
-        
-            if (caLine) {
-                // Extraire l'adresse du token après "CA:"
-                const caMatch = caLine.match(/CA:\s*`?([a-zA-Z0-9]+)`?/); // Modifié pour capturer l'adresse sans les backticks
-                const tokenAddress = caMatch ? caMatch[1] : null;
-                
-                if (tokenAddress) {
-                    console.log(`Adresse du token trouvée : ${tokenAddress}`);
-                    return tokenAddress;
-                }
-            }
-        } else {
-            console.log("Ce n'est pas un ordre d'achat.");
-            return null; // Retourne null si ce n'est pas un ordre d'achat
+        if (tokenAddress) {
+            console.log(`Adresse du token trouvée : ${tokenAddress}`);
+            return tokenAddress;
         }
     }
-    
+
     console.log('Aucune adresse de token trouvée dans le message.');
     return null; // Retourne null si aucune adresse n'a été trouvée
 }
 
 
 export function extractTokenNameFromMessage(message: any): string {
-    if (message && message.text) {
-        const lines: string[] = message.text.split('\n');
+    const lines: string[] = message.text.split('\n');
 
-        // Rechercher la ligne qui contient "CA:"
-        const caLine = lines.find((line: string) => line.includes('CA:'));
+    // Rechercher la ligne qui contient "CA:"
+    const caLine = lines.find((line: string) => line.includes('CA:'));
 
-        if (caLine) {
-            // Extraire le nom du token avant "CA:"
-            const tokenNameMatch = message.text.match(/(.*?)\s+CA:/);
-            if (tokenNameMatch && tokenNameMatch[1]) {
-                return tokenNameMatch[1].trim(); // Retirer les espaces autour
-            }
+    if (caLine) {
+        // Extraire le nom du token avant "CA:"
+        const tokenNameMatch = message.text.match(/(.*?)\s+CA:/);
+        if (tokenNameMatch && tokenNameMatch[1]) {
+            return tokenNameMatch[1].trim(); // Retirer les espaces autour
         }
     }
     
@@ -126,25 +120,22 @@ export function extractTokenNameFromMessage(message: any): string {
  * @returns Le prix d'achat du token sous forme de chaîne, ou une chaîne vide si non trouvé
  */
 export function extractPurchasePriceFromMessage(message: any): string {
-    if (message && message.text) {
-        const lines: string[] = message.text.split('\n');
+    const lines: string[] = message.text.split('\n');
 
-        // Rechercher la ligne qui commence par "💰 Received:"
-        const receivedLine = lines.find((line: string) => line.startsWith('💰 Received:'));
-        
-        if (receivedLine) {
-            // Utiliser une expression régulière pour extraire le prix qui suit "Price:"
-            const priceMatch = receivedLine.match(/Price:\s*\$?([\d.,]+)/);
-            if (priceMatch && priceMatch[1]) {
-                const price = priceMatch[1].trim(); // Retirer les espaces autour
-                return price.replace('.', ','); // Remplacer "." par ","
-            }
+    // Rechercher la ligne qui commence par "💰 Received:"
+    const receivedLine = lines.find((line: string) => line.startsWith('💰 Received:'));
+    
+    if (receivedLine) {
+        // Utiliser une expression régulière pour extraire le prix qui suit "Price:"
+        const priceMatch = receivedLine.match(/Price:\s*\$?([\d.,]+)/);
+        if (priceMatch && priceMatch[1]) {
+            const price = priceMatch[1].trim(); // Retirer les espaces autour
+            return price.replace('.', ','); // Remplacer "." par ","
         }
     }
     
     return ''; // Retourne une chaîne vide si aucun prix n'est trouvé
 }
-
 
 
 /**
@@ -188,19 +179,44 @@ export async function extractTokenKeyFromTxMessage(message: any, transactionUrlP
  * @returns Le nom de la whale si trouvé, sinon null
  */
 export function extractWhaleNameFromMessage(message: any): string {
+    const lines: string[] = message.text.split('\n');
+
+    // Rechercher la ligne qui commence par "🔔 TXN ALERT :"
+    const txnAlertLine = lines.find((line: string) => line.startsWith('🔔 TXN ALERT :'));
+
+    if (txnAlertLine) {
+        // Utiliser une expression régulière pour capturer le nom de la whale
+        const nameMatch = txnAlertLine.match(/🔔 TXN ALERT : (.+)/);
+        if (nameMatch && nameMatch[1]) {
+            return nameMatch[1].trim(); // Retirer les espaces autour
+        }
+    }
+
+    return ''; // Retourne une chaîne vide si aucun nom n'est trouvé
+}
+
+
+/**
+ * Vérifie si un message correspond à un ordre d'achat de SOL.
+ * @param message Le message Telegram à vérifier
+ * @returns true si le message correspond à un ordre d'achat de SOL, false sinon
+ */
+export function isBuyOrder(message: any): boolean {
     if (message && message.text) {
         const lines: string[] = message.text.split('\n');
 
-        // Rechercher la ligne qui commence par "🔔 TXN ALERT :"
-        const txnAlertLine = lines.find((line: string) => line.startsWith('🔔 TXN ALERT :'));
+        // Vérifie la présence de "Swapped" avec le mot exact "SOL" pour confirmer un ordre d'achat
+        const swappedLine = lines.find((line: string) => 
+            line.startsWith('💸 Swapped:') && /\bSOL\b/.test(line) // Utilise \b pour correspondre au mot exact "SOL"
+        );
 
-        if (txnAlertLine) {
-            // Utiliser une expression régulière pour capturer le nom de la whale
-            const nameMatch = txnAlertLine.match(/🔔 TXN ALERT : (.+)/);
-            if (nameMatch && nameMatch[1]) {
-                return nameMatch[1].trim(); // Retirer les espaces autour
-            }
-        }
+        // Vérifie la présence de "Received" avec " USDC" pour confirmer que ce n'est pas un ordre d'achat
+        const receivedLine = lines.find((line: string) => 
+            line.startsWith('💰 Received:') && /\bUSDC\b/.test(line) // Utilise \b pour correspondre au mot exact "USDC"
+        );
+
+        return !!swappedLine && !receivedLine; // Retourne true si "Swapped" est trouvé et "Received" n'est pas trouvé
+    } else {
+        return false;
     }
-    return ''; // Retourne une chaîne vide si aucun nom n'est trouvé
 }
