@@ -1,5 +1,8 @@
 import fs from 'fs';
 import path from 'path';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // Fonction pour mettre à jour le fichier .env
 export const updateEnvFile = (key: string, value: string): void => {
@@ -19,4 +22,11 @@ export const updateEnvFile = (key: string, value: string): void => {
     // Écrire dans le fichier .env
     fs.writeFileSync(envPath, envContent);
     console.log(`Variable d'environnement ${key} mise à jour dans .env`);
+};
+
+
+// Fonction pour vérifier si le call vient d'une whale de la whitelist
+export const isWhitelistWhale = (whaleName: string): boolean => {
+    const whitelist = (process.env.WHALES_WHITELIST || '').split(','); // Récupérer la liste des whales de l'environnement
+    return whitelist.includes(whaleName);
 };
