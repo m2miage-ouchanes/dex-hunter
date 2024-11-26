@@ -27,11 +27,12 @@ export async function processMessage(event: NewMessageEvent) {
                     
     // Vérifiez si la clé du token est récupérée
     if (tokenAddress) {
-        const exists = await checkAddressInSheet(tokenAddress);
+        const exists = await checkAddressInSheet(tokenAddress, whaleName);
         const existsWallet = await checkWalletInSheet(tokenAddress);
         const whitelistWhale = isWhitelistWhale(whaleName);
-        if (!exists && whitelistWhale) {
-            console.log(`Adresse non trouvée dans la feuille et ${whaleName} fait partie de la whitelist. Achat du token en cours...`);
+
+        if (!exists && whitelistWhale && !existsWallet) {
+            console.log(`Adresse non trouvée dans la feuille pour cette whale et ${whaleName} fait partie de la whitelist. Achat du token en cours...`);
             try {
                 // Appel à l'API pour acheter le token
                 await buyToken(tokenAddress); // Acheter le token
@@ -50,7 +51,7 @@ export async function processMessage(event: NewMessageEvent) {
                 console.error('Erreur lors de l\'achat du token :', error);
             }
         } else if (!exists && !whitelistWhale) {
-            console.log(`Adresse non trouvée dans la feuille et ${whaleName} ne fait pas partie de la whitelist.`);
+            console.log(`Adresse non trouvée dans la feuille pour cette whale et ${whaleName} ne fait pas partie de la whitelist.`);
             try {
                 console.log('Ajout de l\'adresse dans la feuille.');
 
@@ -65,7 +66,7 @@ export async function processMessage(event: NewMessageEvent) {
             } catch (error) {
                 console.error('Erreur lors de l\'achat du token :', error);
             }
-        } else if (exists && !existsWallet && whitelistWhale) {
+        } else if (exists && whitelistWhale && !existsWallet) {
             console.log(`Adresse trouvée dans la feuille mais pas dans une transaction de la whitelist. Achat du token en cours...`);
             try {
                 // Appel à l'API pour acheter le token
