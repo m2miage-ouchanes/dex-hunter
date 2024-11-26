@@ -5,14 +5,15 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-export async function checkAddressInSheet(address: string): Promise<boolean> {
+export async function checkAddressInSheet(address: string, whale: string): Promise<boolean> {
     const sheets = google.sheets('v4');
 
     // Typage correct pour un client basé sur JWT
     const client: JWT = await getGoogleSheetsClient(); // Assuré que cela renvoie un JWT
 
     const spreadsheetId = process.env.GGSHEET_ID || ''; 
-    const range = 'Degen - Paramètres et Suivi!A:L'; 
+    const range = 'Degen - Paramètres et Suivi!A:L';
+    const range2 = 'Degen - Statistiques!A:H';
 
     try {
         const response = await sheets.spreadsheets.values.get({
@@ -21,20 +22,29 @@ export async function checkAddressInSheet(address: string): Promise<boolean> {
             range,
         });
 
+        const response2 = await sheets.spreadsheets.values.get({
+            auth: client, // Utilisation du client JWT pour l'authentification
+            spreadsheetId,
+            range: range2,
+        });
+
         const rows = response.data?.values || []; // Vérification si data est défini
+        const rows2 = response2.data?.values || []; // Vérification si data est défini
 
         if (rows.length) {
             const memeCoinIndex = rows[0].indexOf('Clé du meme coin');
             const stopLossIndex = rows[0].indexOf('Stop-loss');
+            const whaleIndex = rows2[0].indexOf('Whale');
 
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i];
-                if (row[stopLossIndex] === 'FALSE' && row[memeCoinIndex] === address) {
-                    console.log('L\'adresse existe déjà dans la feuille.');
+                const row2 = rows2[i];
+                if (row[stopLossIndex] === 'FALSE' && row2[whaleIndex] === whale && row[memeCoinIndex] === address) {
+                    console.log('L\'adresse existe déjà dans la feuille pour cette whale.');
                     return true;
                 }
             }
-            console.log('L\'adresse n\'existe pas dans la feuille.');
+            console.log('L\'adresse n\'existe pas dans la feuille pour cette whale.');
             return false;
         } else {
             console.log('Aucune donnée trouvée dans la feuille.');
