@@ -24,63 +24,57 @@ export async function processMessage(event: NewMessageEvent) {
     const tokenAddress = extractTokenAddressFromMessage(message);
     const tokenName = extractTokenNameFromMessage(message);
     const whaleName = extractWhaleNameFromMessage(message);
-                    
+
     // Vérifiez si la clé du token est récupérée
     if (tokenAddress) {
         const exists = await checkAddressInSheet(tokenAddress, whaleName);
         const existsWallet = await checkWalletInSheet(tokenAddress);
         const whitelistWhale = isWhitelistWhale(whaleName);
+        var isError = false;
 
-        if (!exists && whitelistWhale && !existsWallet) {
-            console.log(`Adresse non trouvée dans la feuille pour cette whale et ${whaleName} fait partie de la whitelist. Achat du token en cours...`);
-            try {
-                // Appel à l'API pour acheter le token
-                await buyToken(tokenAddress); // Acheter le token
-
-                console.log('Achat réussi. Ajout de l\'adresse dans la feuille.');
-
-                // Ajouter le nom de la whale dans la feuille Google Sheets
-                await addStatToSheet(whaleName);
-
-                const tokenPrice = await currentPriceToken(tokenAddress);
-
-                // Ajouter l'adresse et le prix du token lors de l'achat du token dans la feuille Google Sheets
-                await addTokenToSheet(tokenAddress, tokenName, tokenPrice, process.env.WALLET_PUBLIC_KEY as string);
-
-            } catch (error) {
-                console.error('Erreur lors de l\'achat du token :', error);
+        if (!exists) {
+            console.log(`Adresse non trouvée dans la feuille pour cette whale : ${whaleName}.`);
+            if (whitelistWhale && !existsWallet) {
+                console.log(`Whale whitelistée et adresse non trouvée dans le porte-feuille. Achat du token en cours...`);
+                try {
+                    // Appel à l'API pour acheter le token
+                    await buyToken(tokenAddress);
+                    console.log('Achat réussi.');
+                } catch (error) {
+                    console.error('Erreur lors de l\'achat du token :', error);
+                    isError = true;
+                }
             }
-        } else if (!exists && !whitelistWhale) {
-            console.log(`Adresse non trouvée dans la feuille pour cette whale et ${whaleName} ne fait pas partie de la whitelist.`);
             try {
-                console.log('Ajout de l\'adresse dans la feuille.');
+                console.log('Ajout de l\'adresse dans la feuille...');
+                const tokenPrice = await currentPriceToken(tokenAddress);
 
                 // Ajouter le nom de la whale dans la feuille Google Sheets
                 await addStatToSheet(whaleName);
 
-                const tokenPrice = await currentPriceToken(tokenAddress);
-
-                // Ajouter l'adresse et le prix du token lors de l'achat du token dans la feuille Google Sheets
-                await addTokenToSheet(tokenAddress, tokenName, tokenPrice);
-
+                console.log('L\'erreur est :', isError);
+                if (whitelistWhale && !existsWallet && !isError) {
+                    await addTokenToSheet(tokenAddress, tokenName, tokenPrice, process.env.WALLET_PUBLIC_KEY as string);
+                } else {
+                    await addTokenToSheet(tokenAddress, tokenName, tokenPrice);
+                }
+                console.log('Adresse ajoutée avec succès !');
             } catch (error) {
-                console.error('Erreur lors de l\'achat du token :', error);
+                console.error('Erreur lors de l\'ajout de l\'adresse dans la feuille :', error);
             }
         } else if (exists && whitelistWhale && !existsWallet) {
-            console.log(`Adresse trouvée dans la feuille mais pas dans une transaction de la whitelist. Achat du token en cours...`);
+            console.log(`Whale ${whaleName} whitelistée et adresse non trouvée dans le porte-feuille. Achat du token en cours...`);
             try {
                 // Appel à l'API pour acheter le token
                 await buyToken(tokenAddress); // Acheter le token
 
                 console.log('Achat réussi. Ajout de l\'adresse dans la feuille.');
 
-                // Ajouter le nom de la whale dans la feuille Google Sheets
-                await addStatToSheet(whaleName);
-
                 const tokenPrice = await currentPriceToken(tokenAddress);
-
                 // Ajouter l'adresse et le prix du token lors de l'achat du token dans la feuille Google Sheets
+                await addStatToSheet(whaleName);
                 await addTokenToSheet(tokenAddress, tokenName, tokenPrice, process.env.WALLET_PUBLIC_KEY as string);
+                console.log('Adresse ajoutée avec succès !');
 
             } catch (error) {
                 console.error('Erreur lors de l\'achat du token :', error);
@@ -127,7 +121,7 @@ export function extractTokenAddressFromMessage(message: any): string | null {
         // Extraire l'adresse du token après "CA:"
         const caMatch = caLine.match(/CA:\s*`?([a-zA-Z0-9]+)`?/); // Modifié pour capturer l'adresse sans les backticks
         const tokenAddress = caMatch ? caMatch[1] : null;
-        
+
         if (tokenAddress) {
             console.log(`Adresse du token trouvée : ${tokenAddress}`);
             return tokenAddress;
@@ -152,7 +146,7 @@ export function extractTokenNameFromMessage(message: any): string {
             return tokenNameMatch[1].trim(); // Retirer les espaces autour
         }
     }
-    
+
     return ''; // Retourne une chaîne vide si aucun nom n'est trouvé
 }
 
@@ -168,7 +162,7 @@ export function extractPurchasePriceFromMessage(message: any): string {
 
     // Rechercher la ligne qui commence par "💰 Received:"
     const receivedLine = lines.find((line: string) => line.startsWith('💰 Received:'));
-    
+
     if (receivedLine) {
         // Utiliser une expression régulière pour extraire le prix qui suit "Price:"
         const priceMatch = receivedLine.match(/Price:\s*\$?([\d.,]+)/);
@@ -177,7 +171,7 @@ export function extractPurchasePriceFromMessage(message: any): string {
             return price.replace('.', ','); // Remplacer "." par ","
         }
     }
-    
+
     return ''; // Retourne une chaîne vide si aucun prix n'est trouvé
 }
 
@@ -250,12 +244,12 @@ export function isBuyOrder(message: any): boolean {
         const lines: string[] = message.text.split('\n');
 
         // Vérifie la présence de "Swapped" avec le mot exact "SOL" pour confirmer un ordre d'achat
-        const swappedLine = lines.find((line: string) => 
+        const swappedLine = lines.find((line: string) =>
             line.startsWith('💸 Swapped:') && /\bSOL\b/.test(line) // Utilise \b pour correspondre au mot exact "SOL"
         );
 
         // Vérifie la présence de "Received" avec " USDC" pour confirmer que ce n'est pas un ordre d'achat
-        const receivedLine = lines.find((line: string) => 
+        const receivedLine = lines.find((line: string) =>
             line.startsWith('💰 Received:') && /\bUSDC\b/.test(line) // Utilise \b pour correspondre au mot exact "USDC"
         );
 
