@@ -239,9 +239,8 @@ export async function addStatToSheet(whaleName: string) {
         }
         firstEmptyRow += 1; // Ajout d'une ligne supplémentaire pour insérer la nouvelle entrée
 
-        // Formater la date du jour au format "dd/MM/yyyy"
         const today = new Date();
-        const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+        const formattedDate = `${today.getDate().toString().padStart(2, '0')}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${today.getFullYear()}`;
 
         // Préparation des données à insérer uniquement pour les colonnes spécifiées
         const newRow = [whaleName, formattedDate]; // Limité aux colonnes D et E
@@ -254,7 +253,7 @@ export async function addStatToSheet(whaleName: string) {
             auth: client,
             spreadsheetId,
             range: appendRange,
-            valueInputOption: 'RAW', // Option pour insérer les valeurs telles quelles
+            valueInputOption: 'USER_ENTERED', // Option pour interprèter correctement les dates et les formater selon les paramètres régionaux de l'utilisateur
             requestBody: {
                 values: [newRow], // Ajout de la nouvelle ligne sous forme de tableau
             },
