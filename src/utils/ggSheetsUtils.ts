@@ -11,7 +11,7 @@ export async function checkAddressInSheet(address: string, whale: string): Promi
     // Typage correct pour un client basé sur JWT
     const client: JWT = await getGoogleSheetsClient(); // Assuré que cela renvoie un JWT
 
-    const spreadsheetId = process.env.GGSHEET_ID || ''; 
+    const spreadsheetId = process.env.GGSHEET_ID || '';
     const range = 'Degen - Paramètres et Suivi!A:L';
     const range2 = 'Degen - Statistiques!A:H';
 
@@ -32,9 +32,15 @@ export async function checkAddressInSheet(address: string, whale: string): Promi
         const rows2 = response2.data?.values || []; // Vérification si data est défini
 
         if (rows.length) {
+
             const memeCoinIndex = rows[0].indexOf('Clé du meme coin');
             const stopLossIndex = rows[0].indexOf('Stop-loss');
             const whaleIndex = rows2[0].indexOf('Whale');
+
+            if (memeCoinIndex === -1 || stopLossIndex === -1 || whaleIndex === -1) {
+                console.log('Memecoin : ', memeCoinIndex, ' Stop-loss : ', stopLossIndex, ' Whale : ', whaleIndex);
+                throw new Error('Colonnes non trouvées dans la feuille.');
+            }
 
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i];
@@ -63,8 +69,8 @@ export async function checkWalletInSheet(address: string): Promise<boolean> {
     // Typage correct pour un client basé sur JWT
     const client: JWT = await getGoogleSheetsClient(); // Assuré que cela renvoie un JWT
 
-    const spreadsheetId = process.env.GGSHEET_ID || ''; 
-    const range = 'Degen - Paramètres et Suivi!A:M'; 
+    const spreadsheetId = process.env.GGSHEET_ID || '';
+    const range = 'Degen - Paramètres et Suivi!A:M';
 
     try {
         const response = await sheets.spreadsheets.values.get({
@@ -109,7 +115,7 @@ export async function checkWalletInSheet(address: string): Promise<boolean> {
 export async function addTokenToSheet(tokenAddress: string, tokenName: string, purchasePrice: string, wallet?: string): Promise<void> {
     const sheets = google.sheets('v4');
     const client: JWT = await getGoogleSheetsClient();
-    const spreadsheetId = process.env.GGSHEET_ID || ''; 
+    const spreadsheetId = process.env.GGSHEET_ID || '';
     const range = 'Degen - Paramètres et Suivi!A:C'; // Le même range utilisé pour la vérification
     const range2 = 'Degen - Paramètres et Suivi!M:M'; // Le même range utilisé pour la vérification
 
@@ -142,50 +148,50 @@ export async function addTokenToSheet(tokenAddress: string, tokenName: string, p
             throw new Error('Colonnes non trouvées dans la feuille.');
         }
 
-       // Trouver la première ligne vide dans la colonne "Clé du meme coin"
-       let firstEmptyRow = rows.length; // On commence après la dernière ligne de la feuille
+        // Trouver la première ligne vide dans la colonne "Clé du meme coin"
+        let firstEmptyRow = rows.length; // On commence après la dernière ligne de la feuille
 
-       for (let i = 1; i < rows.length; i++) {
-           if (!rows[i][memeCoinIndex]) { // Si la cellule est vide dans la colonne "Clé du meme coin"
-               firstEmptyRow = i + 1; // Numéro de ligne à insérer (i + 1 car les lignes sont indexées à partir de 1 dans Google Sheets)
-               break;
-           }
-       }
-       firstEmptyRow += 1; // Ajout d'une ligne supplémentaire pour insérer la nouvelle entrée
+        for (let i = 1; i < rows.length; i++) {
+            if (!rows[i][memeCoinIndex]) { // Si la cellule est vide dans la colonne "Clé du meme coin"
+                firstEmptyRow = i + 1; // Numéro de ligne à insérer (i + 1 car les lignes sont indexées à partir de 1 dans Google Sheets)
+                break;
+            }
+        }
+        firstEmptyRow += 1; // Ajout d'une ligne supplémentaire pour insérer la nouvelle entrée
 
-       // Préparation des données à insérer uniquement pour les colonnes spécifiées
-       const newRow = Array(rows[0].length).fill(''); // Crée une ligne vide de la même longueur que les autres
-       newRow[memeCoinIndex] = tokenAddress; // Insertion de l'adresse du token
-       newRow[nameIndex] = tokenName; // Insertion du nom du token
-       newRow[priceIndex] = purchasePrice.toString(); // Insertion du prix d'achat
+        // Préparation des données à insérer uniquement pour les colonnes spécifiées
+        const newRow = Array(rows[0].length).fill(''); // Crée une ligne vide de la même longueur que les autres
+        newRow[memeCoinIndex] = tokenAddress; // Insertion de l'adresse du token
+        newRow[nameIndex] = tokenName; // Insertion du nom du token
+        newRow[priceIndex] = purchasePrice.toString(); // Insertion du prix d'achat
 
-       // Ajout des données à la première ligne vide trouvée
-       const appendRange = `Degen - Paramètres et Suivi!A${firstEmptyRow}`; // Spécifie la ligne à insérer (A)
-
-       await sheets.spreadsheets.values.update({
-           auth: client,
-           spreadsheetId,
-           range: appendRange,
-           valueInputOption: 'RAW', // Option pour insérer les valeurs telles quelles
-           requestBody: {
-               values: [newRow], // Ajout de la nouvelle ligne sous forme de tableau
-           },
-       });
-
-       if (wallet !== undefined) {
-        const newRow2 = Array(rows2[0].length).fill(''); // Crée une ligne vide de la même longueur que les autres
-        newRow2[walletIndex] = wallet; // Insertion du wallet
-            
         // Ajout des données à la première ligne vide trouvée
-        const appendRange2 = `Degen - Paramètres et Suivi!M${firstEmptyRow}`; // Spécifie la ligne à insérer (M)
+        const appendRange = `Degen - Paramètres et Suivi!A${firstEmptyRow}`; // Spécifie la ligne à insérer (A)
 
         await sheets.spreadsheets.values.update({
+            auth: client,
+            spreadsheetId,
+            range: appendRange,
+            valueInputOption: 'RAW', // Option pour insérer les valeurs telles quelles
+            requestBody: {
+                values: [newRow], // Ajout de la nouvelle ligne sous forme de tableau
+            },
+        });
+
+        if (wallet !== undefined) {
+            const newRow2 = Array(rows2[0].length).fill(''); // Crée une ligne vide de la même longueur que les autres
+            newRow2[walletIndex] = wallet; // Insertion du wallet
+
+            // Ajout des données à la première ligne vide trouvée
+            const appendRange2 = `Degen - Paramètres et Suivi!M${firstEmptyRow}`; // Spécifie la ligne à insérer (M)
+
+            await sheets.spreadsheets.values.update({
                 auth: client,
                 spreadsheetId,
                 range: appendRange2,
                 valueInputOption: 'RAW', // Option pour insérer les valeurs telles quelles
                 requestBody: {
-                values: [newRow2], // Ajout de la nouvelle ligne sous forme de tableau
+                    values: [newRow2], // Ajout de la nouvelle ligne sous forme de tableau
                 },
             });
         }
@@ -200,7 +206,7 @@ export async function addTokenToSheet(tokenAddress: string, tokenName: string, p
 export async function addStatToSheet(whaleName: string) {
     const sheets = google.sheets('v4');
     const client: JWT = await getGoogleSheetsClient();
-    const spreadsheetId = process.env.GGSHEET_ID || ''; 
+    const spreadsheetId = process.env.GGSHEET_ID || '';
     const range = 'Degen - Statistiques!A:E'; // Le même range utilisé pour la vérification
 
     try {
@@ -222,37 +228,36 @@ export async function addStatToSheet(whaleName: string) {
             throw new Error('Colonnes non trouvées dans la feuille.');
         }
 
-       // Trouver la première ligne vide dans la colonne "Clé du meme coin"
-       let firstEmptyRow = rows.length; // On commence après la dernière ligne de la feuille
+        // Trouver la première ligne vide dans la colonne "Clé du meme coin"
+        let firstEmptyRow = rows.length; // On commence après la dernière ligne de la feuille
 
-       for (let i = 1; i < rows.length; i++) {
-           if (!rows[i][memeCoinIndex]) { // Si la cellule est vide dans la colonne "Clé du meme coin"
-               firstEmptyRow = i + 1; // Numéro de ligne à insérer (i + 1 car les lignes sont indexées à partir de 1 dans Google Sheets)
-               break;
-           }
-       }
-       firstEmptyRow += 1; // Ajout d'une ligne supplémentaire pour insérer la nouvelle entrée
+        for (let i = 1; i < rows.length; i++) {
+            if (!rows[i][memeCoinIndex]) { // Si la cellule est vide dans la colonne "Clé du meme coin"
+                firstEmptyRow = i + 1; // Numéro de ligne à insérer (i + 1 car les lignes sont indexées à partir de 1 dans Google Sheets)
+                break;
+            }
+        }
+        firstEmptyRow += 1; // Ajout d'une ligne supplémentaire pour insérer la nouvelle entrée
 
-       // Formater la date du jour au format "dd/MM/yyyy"
-       const today = new Date();
-       const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+        const today = new Date();
+        const formattedDate = `${today.getDate().toString().padStart(2, '0')}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${today.getFullYear()}`;
 
-       // Préparation des données à insérer uniquement pour les colonnes spécifiées
-       const newRow = [whaleName, formattedDate]; // Limité aux colonnes D et E
+        // Préparation des données à insérer uniquement pour les colonnes spécifiées
+        const newRow = [whaleName, formattedDate]; // Limité aux colonnes D et E
 
 
-       // Ajout des données à la première ligne vide trouvée
-       const appendRange = `Degen - Statistiques!D${firstEmptyRow}:E${firstEmptyRow}`; // Spécifie la ligne à insérer (de colonne D à E)
+        // Ajout des données à la première ligne vide trouvée
+        const appendRange = `Degen - Statistiques!D${firstEmptyRow}:E${firstEmptyRow}`; // Spécifie la ligne à insérer (de colonne D à E)
 
-       await sheets.spreadsheets.values.update({
-           auth: client,
-           spreadsheetId,
-           range: appendRange,
-           valueInputOption: 'RAW', // Option pour insérer les valeurs telles quelles
-           requestBody: {
-               values: [newRow], // Ajout de la nouvelle ligne sous forme de tableau
-           },
-       });
+        await sheets.spreadsheets.values.update({
+            auth: client,
+            spreadsheetId,
+            range: appendRange,
+            valueInputOption: 'USER_ENTERED', // Option pour interprèter correctement les dates et les formater selon les paramètres régionaux de l'utilisateur
+            requestBody: {
+                values: [newRow], // Ajout de la nouvelle ligne sous forme de tableau
+            },
+        });
 
         console.log('Informations du token ajoutés avec succès dans l\'onglet de statistiques du Google Sheets.');
     } catch (error) {
