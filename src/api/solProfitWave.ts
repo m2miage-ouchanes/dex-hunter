@@ -15,13 +15,13 @@ function isAxiosError(error: any): error is AxiosError {
 /**
  * Achète un token en utilisant l'API du micro-service.
  * @param tokenPublicKey La clé publique du token à acheter.
- * @param solAmountToSpend Le montant de SOL à dépenser pour l'achat.
+ * @param url L'URL du micro-service d'achat.
  */
-export async function buyToken(tokenPublicKey: string) {
-    const url = process.env.SOL_PROFIT_WAVE_URL + "/api/transaction/buy"; // URL du micro-service d'achat
+export async function buyToken(tokenPublicKey: string, url: string) {
+    const urlWithEndpoint = url + "/api/transaction/buy"; // URL du micro-service d'achat
 
     try {
-        const response = await axios.post(url, {
+        const response = await axios.post(urlWithEndpoint, {
             tokenPublicKey
         });
 

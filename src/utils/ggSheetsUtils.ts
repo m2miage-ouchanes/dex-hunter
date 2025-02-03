@@ -63,7 +63,7 @@ export async function checkAddressInSheet(address: string, whale: string): Promi
 }
 
 
-export async function checkWalletInSheet(address: string): Promise<boolean> {
+export async function checkWalletInSheet(address: string, wallet: string): Promise<boolean> {
     const sheets = google.sheets('v4');
 
     // Typage correct pour un client basé sur JWT
@@ -88,7 +88,7 @@ export async function checkWalletInSheet(address: string): Promise<boolean> {
 
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i];
-                if (row[memeCoinIndex] === address && row[walletIndex] === process.env.WALLET_PUBLIC_KEY && row[stopLossIndex] === 'FALSE') {
+                if (row[memeCoinIndex] === address && row[walletIndex] === wallet && row[stopLossIndex] === 'FALSE') {
                     console.log('L\'adresse existe déjà dans le porte-feuille.');
                     return true;
                 }
