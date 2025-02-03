@@ -8,6 +8,13 @@ import { isWhitelistWhale } from './utils';
 
 dotenv.config();
 
+const urls = (process.env.SOL_PROFIT_WAVE_URL || '').split(',');
+const wallets = (process.env.WALLET_PUBLIC_KEY || '').split(',');
+
+if (urls.length !== wallets.length) {
+    throw new Error('Les URL et les wallets doivent avoir la même longueur.');
+}
+
 /**
  * Gère les messages entrants et traite ceux qui correspondent à un swap de SOL.
  */
@@ -27,60 +34,66 @@ export async function processMessage(event: NewMessageEvent) {
 
     // Vérifiez si la clé du token est récupérée
     if (tokenAddress) {
-        const exists = await checkAddressInSheet(tokenAddress, whaleName);
-        const existsWallet = await checkWalletInSheet(tokenAddress);
         const whitelistWhale = isWhitelistWhale(whaleName);
         var isError = false;
 
-        if (!exists) {
-            console.log(`Adresse non trouvée dans la feuille pour cette whale : ${whaleName}.`);
-            if (whitelistWhale && !existsWallet) {
-                console.log(`Whale whitelistée et adresse non trouvée dans le porte-feuille. Achat du token en cours...`);
+        for (let i = 0; i < urls.length; i++) {
+            const url = urls[i];
+            const wallet = wallets[i];
+
+            const existsWallet = await checkWalletInSheet(tokenAddress, wallet);
+            const exists = await checkAddressInSheet(tokenAddress, whaleName);
+
+            if (!exists) {
+                console.log(`Adresse non trouvée dans la feuille pour cette whale : ${whaleName}.`);
+                if (whitelistWhale && !existsWallet) {
+                    console.log(`Whale whitelistée et adresse non trouvée dans le porte-feuille ${wallet}. Achat du token en cours...`);
+                    try {
+                        // Appel à l'API pour acheter le token
+                        await buyToken(tokenAddress, url);
+                        console.log('Achat réussi.');
+                    } catch (error) {
+                        console.error(`Erreur lors de l\'achat du token pour le wallet ${wallet} :`, error);
+                        isError = true;
+                    }
+                }
+                try {
+                    console.log('Ajout de l\'adresse dans la feuille...');
+                    const tokenPrice = await currentPriceToken(tokenAddress);
+
+                    // Ajouter le nom de la whale dans la feuille Google Sheets
+                    await addStatToSheet(whaleName);
+
+                    console.log('L\'erreur est :', isError);
+                    if (whitelistWhale && !existsWallet && !isError) {
+                        await addTokenToSheet(tokenAddress, tokenName, tokenPrice, wallet as string);
+                    } else {
+                        await addTokenToSheet(tokenAddress, tokenName, tokenPrice);
+                    }
+                    console.log('Adresse ajoutée avec succès !');
+                } catch (error) {
+                    console.error('Erreur lors de l\'ajout de l\'adresse dans la feuille :', error);
+                }
+            } else if (exists && whitelistWhale && !existsWallet) {
+                console.log(`Whale ${whaleName} whitelistée et adresse non trouvée dans le porte-feuille ${wallet}. Achat du token en cours...`);
                 try {
                     // Appel à l'API pour acheter le token
-                    await buyToken(tokenAddress);
-                    console.log('Achat réussi.');
+                    await buyToken(tokenAddress, url); // Acheter le token
+
+                    console.log(`Achat réussi pour le wallet ${wallet}. Ajout de l\'adresse dans la feuille.`);
+
+                    const tokenPrice = await currentPriceToken(tokenAddress);
+                    // Ajouter l'adresse et le prix du token lors de l'achat du token dans la feuille Google Sheets
+                    await addStatToSheet(whaleName);
+                    await addTokenToSheet(tokenAddress, tokenName, tokenPrice, wallet as string);
+                    console.log('Adresse ajoutée avec succès !');
+
                 } catch (error) {
-                    console.error('Erreur lors de l\'achat du token :', error);
-                    isError = true;
+                    console.error(`Erreur lors de l\'achat du token pour le wallet ${wallet} :`, error);
                 }
+            } else {
+                console.log('Pas de transaction à effectuer.');
             }
-            try {
-                console.log('Ajout de l\'adresse dans la feuille...');
-                const tokenPrice = await currentPriceToken(tokenAddress);
-
-                // Ajouter le nom de la whale dans la feuille Google Sheets
-                await addStatToSheet(whaleName);
-
-                console.log('L\'erreur est :', isError);
-                if (whitelistWhale && !existsWallet && !isError) {
-                    await addTokenToSheet(tokenAddress, tokenName, tokenPrice, process.env.WALLET_PUBLIC_KEY as string);
-                } else {
-                    await addTokenToSheet(tokenAddress, tokenName, tokenPrice);
-                }
-                console.log('Adresse ajoutée avec succès !');
-            } catch (error) {
-                console.error('Erreur lors de l\'ajout de l\'adresse dans la feuille :', error);
-            }
-        } else if (exists && whitelistWhale && !existsWallet) {
-            console.log(`Whale ${whaleName} whitelistée et adresse non trouvée dans le porte-feuille. Achat du token en cours...`);
-            try {
-                // Appel à l'API pour acheter le token
-                await buyToken(tokenAddress); // Acheter le token
-
-                console.log('Achat réussi. Ajout de l\'adresse dans la feuille.');
-
-                const tokenPrice = await currentPriceToken(tokenAddress);
-                // Ajouter l'adresse et le prix du token lors de l'achat du token dans la feuille Google Sheets
-                await addStatToSheet(whaleName);
-                await addTokenToSheet(tokenAddress, tokenName, tokenPrice, process.env.WALLET_PUBLIC_KEY as string);
-                console.log('Adresse ajoutée avec succès !');
-
-            } catch (error) {
-                console.error('Erreur lors de l\'achat du token :', error);
-            }
-        } else {
-            console.log('Pas de transaction à effectuer.');
         }
     }
     console.log('Fin du traitement !');
