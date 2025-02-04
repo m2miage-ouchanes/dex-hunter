@@ -291,8 +291,9 @@ export async function sendBuyMessage(name: string, cryptoKey: string, buyPrice: 
 
     const message = `🟢 **Ordre d'achat** \n` +
         `• Token : ${name}\n` +
-        `• Adresse : ${cryptoKey}\n` +
+        `• Adresse : [${cryptoKey}](https://dexscreener.com/solana/${cryptoKey})\n` +
         `• Prix d'achat : ${buyPrice} $`;
+
 
     if (process.env.TG_BOT_TOKEN && process.env.TG_BOT_CHAT_ID) {
         const bot = new TelegramBot(process.env.TG_BOT_TOKEN);
