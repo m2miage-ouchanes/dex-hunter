@@ -13,6 +13,8 @@ RUN npm install googleapis@105 @google-cloud/local-auth@2.1.0 --save
 RUN npm install axios@latest
 RUN npm install --save-dev @types/axios@latest
 RUN npm install express@latest
+RUN npm install node-telegram-bot-api
+RUN npm install --save-dev typescript @types/node-telegram-bot-api
 
 COPY src ./src
 

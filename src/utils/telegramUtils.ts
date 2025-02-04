@@ -5,6 +5,8 @@ import { checkAddressInSheet, addTokenToSheet, addStatToSheet, checkWalletInShee
 import { buyToken } from '../api/solProfitWave';
 import dotenv from 'dotenv';
 import { isWhitelistWhale } from './utils';
+import TelegramBot from 'node-telegram-bot-api';
+
 
 dotenv.config();
 
@@ -56,6 +58,14 @@ export async function processMessage(event: NewMessageEvent) {
                         console.error(`Erreur lors de l\'achat du token pour le wallet ${wallet} :`, error);
                         isError = true;
                     }
+                    if (process.env.TG_BOT_TOKEN && process.env.TG_BOT_CHAT_ID) {
+                        try {
+                            const tokenPrice = await currentPriceToken(tokenAddress);
+                            await sendBuyMessage(tokenName, tokenAddress, tokenPrice);
+                        } catch (error) {
+                            console.error(`Erreur lors de l'envoi du message d'achat :`, error);
+                        }
+                    }
                 }
                 try {
                     console.log('Ajout de l\'adresse dans la feuille...');
@@ -83,6 +93,10 @@ export async function processMessage(event: NewMessageEvent) {
                     console.log(`Achat réussi pour le wallet ${wallet}. Ajout de l\'adresse dans la feuille.`);
 
                     const tokenPrice = await currentPriceToken(tokenAddress);
+
+                    if (process.env.TG_BOT_TOKEN && process.env.TG_BOT_CHAT_ID) {
+                        sendBuyMessage(tokenName, tokenAddress, tokenPrice);
+                    }
                     // Ajouter l'adresse et le prix du token lors de l'achat du token dans la feuille Google Sheets
                     await addStatToSheet(whaleName);
                     await addTokenToSheet(tokenAddress, tokenName, tokenPrice, wallet as string);
@@ -269,5 +283,30 @@ export function isBuyOrder(message: any): boolean {
         return !!swappedLine && !receivedLine; // Retourne true si "Swapped" est trouvé et "Received" n'est pas trouvé
     } else {
         return false;
+    }
+}
+
+
+export async function sendBuyMessage(name: string, cryptoKey: string, buyPrice: string): Promise<void> {
+
+    const message = `🟢 **Ordre d'achat** \n` +
+        `• Token : ${name}\n` +
+        `• Adresse : ${cryptoKey}\n` +
+        `• Prix d'achat : ${buyPrice} $`;
+
+    if (process.env.TG_BOT_TOKEN && process.env.TG_BOT_CHAT_ID) {
+        const bot = new TelegramBot(process.env.TG_BOT_TOKEN);
+
+        try {
+            await bot.sendMessage(process.env.TG_BOT_CHAT_ID, message, {
+                parse_mode: 'MarkdownV2',
+                disable_web_page_preview: true
+            });
+
+            console.log('Message Telegram envoyé avec succès');
+        } catch (error) {
+            console.error('Erreur d\'envoi du message Telegram:', (error as Error).message);
+            throw error;
+        }
     }
 }
