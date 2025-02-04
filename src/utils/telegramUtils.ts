@@ -294,17 +294,19 @@ export async function sendBuyMessage(name: string, cryptoKey: string, buyPrice: 
         `• Adresse : ${cryptoKey}\n` +
         `• Prix d'achat : ${parseFloat(buyPrice).toFixed(2)} $`;
 
-    const bot = new TelegramBot(process.env.TG_BOT_TOKEN);
+    if (process.env.TG_BOT_TOKEN && process.env.TG_BOT_CHAT_ID) {
+        const bot = new TelegramBot(process.env.TG_BOT_TOKEN);
 
-    try {
-        await bot.sendMessage(process.env.TG_BOT_CHAT_ID, message, {
-            parse_mode: 'MarkdownV2',
-            disable_web_page_preview: true
-        });
+        try {
+            await bot.sendMessage(process.env.TG_BOT_CHAT_ID, message, {
+                parse_mode: 'MarkdownV2',
+                disable_web_page_preview: true
+            });
 
-        console.log('Message Telegram envoyé avec succès');
-    } catch (error) {
-        console.error('Erreur d\'envoi du message Telegram:', (error as Error).message);
-        throw error;
+            console.log('Message Telegram envoyé avec succès');
+        } catch (error) {
+            console.error('Erreur d\'envoi du message Telegram:', (error as Error).message);
+            throw error;
+        }
     }
 }
